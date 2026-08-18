@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Sim Files - private file downloads." />
+    <title>Files | Private downloads</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <a class="brand" href="#top" aria-label="Files home"><span class="brand-mark">↘</span><span>Files</span></a>
+        <p class="eyebrow collection-label">Files</p>
+        <nav class="collection-nav" aria-label="File collections">
+          <a href="#brand-kit"><span class="collection-swatch coral"></span>Brand kit <span>04</span></a>
+          <a href="#campaign"><span class="collection-swatch gold"></span>Campaign assets <span>05</span></a>
+          <a href="#documents"><span class="collection-swatch blue"></span>Documents <span>03</span></a>
+        </nav>
+
+      </aside>
+
+      <main class="content" id="top">
+        <header class="topbar"><div class="breadcrumbs"><span>Library</span><b>/</b><strong>Sim Files</strong></div><div class="top-actions"><button class="account-action" id="signOutButton">Sign out</button><button class="account-action danger" id="deleteAccountButton">Delete account</button><button class="admin-entry" id="adminEntry">Admin <span>↗</span></button></div></header>
+
+        <section class="hero" id="files">
+          <div><p class="kicker">Library <span class="live-pill">● Open</span></p><h1><em>Free Files</em></h1><p class="hero-copy">A free downloader for flight simulator files.</p></div>
+          <div class="hero-stamp"><div class="stamp-icon">↓</div><p>12 files<br /><strong>3 collections</strong></p></div>
+        </section>
+
+        <div class="toolbar"><label class="search"><span>⌕</span><input id="searchInput" type="search" placeholder="Search files" /></label><div class="view-controls"><button class="filter-button" id="filterButton">⇅ <span>Newest first</span></button><button class="grid-button active" aria-label="List view">☷</button><button class="grid-button" aria-label="Grid view">⊞</button></div></div>
+
+        <section class="collection-section" id="brand-kit"><div class="section-heading"><div><span class="section-marker coral"></span><h2>Brand kit</h2><span class="file-total">04 files</span></div><button class="text-button">View collection <span>→</span></button></div><div class="file-list" data-collection="brand kit">
+          <article class="file-row" data-name="Northstar brand guidelines"><div class="file-type pdf">PDF</div><div class="file-info"><h3>Northstar brand guidelines</h3><p>Brand kit <span>•</span> Added 2 hours ago</p></div><div class="file-size">24.8 MB</div><span class="lock">⌑</span><button class="download-button" data-file="Northstar brand guidelines" data-size="24.8 MB" aria-label="Download Northstar brand guidelines">↓</button></article>
+          <article class="file-row" data-name="Logo suite"><div class="file-type zip">ZIP</div><div class="file-info"><h3>Logo suite <span class="star">★</span></h3><p>Brand kit <span>•</span> Added yesterday</p></div><div class="file-size">186.2 MB</div><span class="lock">⌑</span><button class="download-button" data-file="Logo suite" data-size="186.2 MB" aria-label="Download Logo suite">↓</button></article>
+          <article class="file-row" data-name="Color palette"><div class="file-type ase">ASE</div><div class="file-info"><h3>Color palette</h3><p>Brand kit <span>•</span> Added yesterday</p></div><div class="file-size">18 KB</div><span class="lock">⌑</span><button class="download-button" data-file="Color palette" data-size="18 KB" aria-label="Download Color palette">↓</button></article>
+        </div></section>
+
+        <section class="collection-section" id="campaign"><div class="section-heading"><div><span class="section-marker gold"></span><h2>Campaign assets</h2><span class="file-total">05 files</span></div><button class="text-button">View collection <span>→</span></button></div><div class="file-list" data-collection="campaign assets">
+          <article class="file-row" data-name="Launch film master"><div class="file-type mov">MOV</div><div class="file-info"><h3>Launch film master <span class="new-badge">NEW</span></h3><p>Campaign assets <span>•</span> Added today</p></div><div class="file-size">2.4 GB</div><span class="lock">⌑</span><button class="download-button" data-file="Launch film master" data-size="2.4 GB" aria-label="Download Launch film master">↓</button></article>
+          <article class="file-row" data-name="Social cutdowns"><div class="file-type mp4">MP4</div><div class="file-info"><h3>Social cutdowns</h3><p>Campaign assets <span>•</span> Added today</p></div><div class="file-size">842.7 MB</div><span class="lock">⌑</span><button class="download-button" data-file="Social cutdowns" data-size="842.7 MB" aria-label="Download Social cutdowns">↓</button></article>
+        </div></section>
+
+        <section class="collection-section" id="documents"><div class="section-heading"><div><span class="section-marker blue"></span><h2>Documents</h2><span class="file-total">03 files</span></div><button class="text-button">View collection <span>→</span></button></div><div class="file-list" data-collection="documents">
+          <article class="file-row" data-name="Project handoff notes"><div class="file-type doc">DOCX</div><div class="file-info"><h3>Project handoff notes</h3><p>Documents <span>•</span> Added 3 days ago</p></div><div class="file-size">2.1 MB</div><span class="lock">⌑</span><button class="download-button" data-file="Project handoff notes" data-size="2.1 MB" aria-label="Download Project handoff notes">↓</button></article>
+        </div></section>
+        <p class="footer-note">Created by rep_</p>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="passwordModal" aria-hidden="true"><div class="password-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button class="close-modal" id="closeModal" aria-label="Close password dialog">×</button><div class="modal-lock">⌑</div><p class="kicker">Protected download</p><h2 id="modalTitle">Unlock this file</h2><p class="modal-copy">Enter the shared password to download <strong id="selectedFile">this file</strong>.</p><form id="passwordForm"><label for="passwordInput">Shared password</label><div class="password-field"><input id="passwordInput" type="password" autocomplete="off" placeholder="Enter password" required /><button type="button" id="togglePassword" aria-label="Show password">◉</button></div><p class="error-message" id="errorMessage">That password is not quite right.</p><button class="unlock-button" type="submit">Unlock & download <span>↓</span></button></form><p class="hint">Ask the sender for access if you don't have the password.</p></div></div>
+    <div class="access-screen" id="accessScreen"><div class="access-panel"><div class="access-brand"><span class="brand-mark">↘</span><span> files</span></div><div class="access-icon">⌑</div><p class="kicker">Files</p><h2 id="accessTitle">Welcome back.</h2><p class="access-copy" id="accessCopy">This room is invite-only. Sign in with your approved account to continue.</p><form id="accessForm"><label for="accessEmail">Email address</label><input class="access-input" id="accessEmail" type="email" placeholder="you@company.com" required /><label for="accessPassword">Room password</label><input class="access-input" id="accessPassword" type="password" placeholder="Enter room password" required /><p class="access-error" id="accessError"></p><button class="access-submit" type="submit" id="accessSubmit">Enter the files <span>→</span></button></form><button class="request-access" id="requestAccess">Need access? Request an invite</button><button class="admin-login-link" id="adminLoginLink">Admin login <span>↗</span></button><p class="access-footnote">Admin approval required</p></div></div>
+    <div class="admin-backdrop" id="adminPanel" aria-hidden="true"><div class="admin-panel"><button class="close-modal" id="closeAdmin" aria-label="Close admin panel">×</button><div class="admin-heading"><div class="access-icon small">⌘</div><div><p class="kicker">Admin area</p><h2>Manage files</h2></div></div><div id="adminLoginView"><p class="modal-copy">Sign in to manage people and add files.</p><form id="adminForm"><label for="adminEmail">Admin email</label><input class="access-input" id="adminEmail" type="email" placeholder="Email address" required /><label for="adminPassword">Admin password</label><input class="access-input" id="adminPassword" type="password" placeholder="Password" required /><p class="access-error" id="adminError"></p><button class="access-submit" type="submit">Open admin <span>↗</span></button></form></div><div class="admin-dashboard" id="adminDashboard" hidden><div class="dashboard-top"><div><p class="kicker">Admin</p><h3>Manage files</h3></div><button class="signout-button" id="adminSignout">Sign out</button></div><div class="admin-section"><div class="admin-section-title"><h4>Pending approvals</h4><span id="requestCount">0 waiting</span></div><div id="requestList" class="request-list"></div></div><form class="person-form" id="addPersonForm"><div class="admin-section-title"><h4>Add a person</h4><span>Give access to Files</span></div><div class="person-fields"><input class="access-input" id="personEmail" type="email" placeholder="Email address" required /><input class="access-input" id="personName" type="text" placeholder="Name (optional)" /></div><button class="access-submit" type="submit">Add approved person <span>+</span></button></form><div class="admin-section people-section"><div class="admin-section-title"><h4>Approved people</h4><span id="peopleCount">0 people</span></div><div id="peopleList" class="request-list"></div></div><form class="upload-form" id="uploadForm"><div class="admin-section-title"><h4>Upload a file</h4><span>Publish to documents</span></div><label class="upload-drop"><input id="fileInput" type="file" required /><span class="upload-symbol">↑</span><strong>Choose a file to upload</strong><small>Any file type · Added to Documents</small></label><button class="access-submit" type="submit">Add to downloads <span>+</span></button></form></div></div></div>
+    <div class="toast" id="toast" role="status">Download started <span>✓</span></div>
+    <script src="app.js"></script>
+  </body>
+</html>
