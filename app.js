@@ -168,6 +168,9 @@ function refreshSectionChoices() {
 function removeSection(index) {
   const [section] = sections.splice(index, 1);
   if (!section) return;
+  supabaseClient.from('sections').delete().eq('name', section.name).then(({ error }) => {
+    if (error) console.error('Could not remove section from Supabase:', error.message);
+  });
   section.element.remove();
   section.navLink.remove();
   persistSections();
@@ -216,6 +219,10 @@ function renderAdminFiles() {
     item.querySelector('strong').textContent = row.dataset.name;
     item.querySelector('small').textContent = `${section.name} · ${row.dataset.size}`;
     item.querySelector('.remove-file-button').addEventListener('click', () => {
+      supabaseClient.from('files').delete().eq('storage_path', row.dataset.storagePath).then(({ error }) => {
+        if (error) console.error('Could not remove file from Supabase:', error.message);
+      });
+      if (row.dataset.storagePath) supabaseClient.storage.from('xplane-files').remove([row.dataset.storagePath]);
       row.remove();
       section.element.querySelector('.file-total').textContent = `${section.element.querySelectorAll('.file-row').length} files`;
       persistFiles();
@@ -350,6 +357,7 @@ document.querySelector('#deleteAccountButton').addEventListener('click', () => {
   const userIndex = approvedUsers.findIndex((user) => user.username === currentUser.username);
   if (userIndex !== -1) {
     approvedUsers.splice(userIndex, 1);
+    supabaseClient.from('approved_users').delete().eq('username', currentUser.username);
     persistAccessLists();
   }
   showAccessScreen('Your account has been deleted.');
@@ -489,6 +497,7 @@ function renderRequests() {
     button.addEventListener('click', () => {
       const requestIndex = Number(button.dataset.requestIndex);
       const [denied] = pendingRequests.splice(requestIndex, 1);
+      supabaseClient.from('pending_requests').delete().eq('username', denied.username);
       persistAccessLists();
       renderRequests();
       showToast(`${denied.name} denied`);
@@ -511,7 +520,8 @@ function renderPeople() {
     peopleList.appendChild(card);
   });
   peopleList.querySelectorAll('.remove-button').forEach((button) => button.addEventListener('click', () => {
-    approvedUsers.splice(Number(button.dataset.personIndex), 1);
+    const [removed] = approvedUsers.splice(Number(button.dataset.personIndex), 1);
+    supabaseClient.from('approved_users').delete().eq('username', removed.username);
     persistAccessLists();
     renderPeople();
     showToast('Person removed');
