@@ -21,6 +21,11 @@ const adminLoginView = document.querySelector('#adminLoginView');
 const adminDashboard = document.querySelector('#adminDashboard');
 let requestMode = false;
 
+const supabaseClient = window.supabase.createClient(
+  'https://cqrbmrmoycjkbfqstjyb.supabase.co',
+  'sb_publishable_QYmVA0yuDX9dTtQb5P3vtg_jW9vEhCN'
+);
+
 const adminCredentials = { username: 'chanlovecookies', password: 'andrewlols' };
 const approvedUsers = JSON.parse(localStorage.getItem('xplaneApprovedUsers') || '[]').filter((user) => user !== 'owner@xplane.dev').map((user) => typeof user === 'string' ? { username: user, name: user, password: 'xplane' } : { username: user.username || user.email, name: user.name, password: user.password });
 const pendingRequests = JSON.parse(localStorage.getItem('xplanePendingRequests') || '[]').filter((request) => request.email !== 'pilot@northstar.dev').map((request) => ({ username: request.username || request.email, name: request.name }));
@@ -52,6 +57,9 @@ document.querySelector('.hero-stamp p').innerHTML = '0 files<br /><strong>0 sect
 
 function persistSections() {
   localStorage.setItem('xplaneSections', JSON.stringify(sections.map((section) => section.name)));
+  supabaseClient.from('sections').upsert(sections.map((section) => ({ name: section.name })), { onConflict: 'name' }).then(({ error }) => {
+    if (error) console.error('Could not save sections to Supabase:', error.message);
+  });
   window.dispatchEvent(new CustomEvent('xplane-data-updated'));
 }
 
@@ -87,9 +95,15 @@ savedFiles.forEach((file) => {
 function persistFiles() {
   const files = [];
   sections.forEach((section) => section.element.querySelectorAll('.file-row').forEach((row) => {
-    files.push({ name: row.dataset.name, size: row.dataset.size, password: row.dataset.password, sectionName: section.name, extension: row.dataset.extension });
+    files.push({ name: row.dataset.name, size: row.dataset.size, password: row.dataset.password, sectionName: section.name, extension: row.dataset.extension, storagePath: row.dataset.storagePath });
   }));
   localStorage.setItem('xplaneFiles', JSON.stringify(files));
+  Promise.all(files.filter((file) => file.storagePath).map(async (file) => {
+    const { data: section } = await supabaseClient.from('sections').select('id').eq('name', file.sectionName).maybeSingle();
+    if (!section) return;
+    const { error } = await supabaseClient.from('files').upsert({ name: file.name, size: file.size, password: file.password, extension: file.extension, section_id: section.id, storage_path: file.storagePath }, { onConflict: 'storage_path' });
+    if (error) console.error('Could not save file to Supabase:', error.message);
+  }));
   window.dispatchEvent(new CustomEvent('xplane-data-updated'));
 }
 
@@ -100,6 +114,7 @@ function appendFileToSection(section, file) {
   row.dataset.size = file.size;
   row.dataset.password = file.password || '';
   row.dataset.extension = file.extension || 'FILE';
+  row.dataset.storagePath = file.storagePath || '';
   row.fileBlob = file.blob || null;
   row.innerHTML = `<div class="file-type doc">${row.dataset.extension}</div><div class="file-info"><h3></h3><p>${section.name} <span>•</span> Added by admin</p></div><div class="file-size">${file.size}</div><span class="lock">⌑</span><button class="download-button" data-file="${file.name}" data-size="${file.size}" aria-label="Download ${file.name}">↓</button>`;
   row.querySelector('h3').textContent = file.name;
@@ -109,7 +124,23 @@ function appendFileToSection(section, file) {
 }
 
 function startDownload(row) {
-  const downloadBlob = row.fileBlob || new Blob([`Xplane Files\n${row.dataset.name}\nSection: ${row.closest('.collection-section')?.querySelector('h2')?.textContent || 'Files'}`], { type: 'text/plain' });
+  activeDownload = row;
+  selectedFile.textContent = row.dataset.name;
+  passwordInput.value = '';
+  errorMessage.classList.remove('show');
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+  passwordInput.focus();
+}
+
+function downloadFile(row) {
+  const downloadBlob = row.fileBlob || (row.dataset.storagePath ? null : new Blob([`Xplane Files\n${row.dataset.name}\nSection: ${row.closest('.collection-section')?.querySelector('h2')?.textContent || 'Files'}`], { type: 'text/plain' }));
+  if (!downloadBlob && row.dataset.storagePath) {
+    const { data } = supabaseClient.storage.from('xplane-files').getPublicUrl(row.dataset.storagePath);
+    window.open(data.publicUrl, '_blank', 'noopener');
+    showToast(`${row.dataset.name} download started`);
+    return;
+  }
   const url = URL.createObjectURL(downloadBlob);
   const link = document.createElement('a');
   link.href = url;
@@ -234,6 +265,12 @@ function setupSectionEditor() {
 function persistAccessLists() {
   localStorage.setItem('xplaneApprovedUsers', JSON.stringify(approvedUsers));
   localStorage.setItem('xplanePendingRequests', JSON.stringify(pendingRequests));
+  Promise.all([
+    supabaseClient.from('approved_users').upsert(approvedUsers.map((user) => ({ username: user.username, name: user.name, password: user.password })), { onConflict: 'username' }),
+    supabaseClient.from('pending_requests').upsert(pendingRequests.map((request) => ({ username: request.username, name: request.name })), { onConflict: 'username' })
+  ]).then(([approvedResult, pendingResult]) => {
+    if (approvedResult.error || pendingResult.error) console.error('Could not save access lists to Supabase:', approvedResult.error?.message || pendingResult.error?.message);
+  });
   window.dispatchEvent(new CustomEvent('xplane-data-updated'));
 }
 
@@ -334,12 +371,14 @@ document.querySelector('#togglePassword').addEventListener('click', () => {
 
 passwordForm.addEventListener('submit', (event) => {
   event.preventDefault();
-  if (!currentUser || passwordInput.value !== currentUser.password) {
+  if (!activeDownload || passwordInput.value !== activeDownload.dataset.password) {
     errorMessage.classList.add('show');
     passwordInput.focus();
     return;
   }
   closeModal();
+  downloadFile(activeDownload);
+  activeDownload = null;
   toast.innerHTML = `Download started <span>✓</span>`;
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 3200);
@@ -520,7 +559,7 @@ document.querySelector('#adminSignout').addEventListener('click', () => {
   document.querySelector('#adminForm').reset();
 });
 
-document.querySelector('#uploadForm').addEventListener('submit', (event) => {
+document.querySelector('#uploadForm').addEventListener('submit', async (event) => {
   event.preventDefault();
   const file = document.querySelector('#fileInput').files[0];
   const section = sections.find((item) => item.id === document.querySelector('#uploadSection')?.value);
@@ -531,7 +570,13 @@ document.querySelector('#uploadForm').addEventListener('submit', (event) => {
   }
   const extension = file.name.split('.').pop().slice(0, 4).toUpperCase();
   const size = file.size > 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB`;
-  appendFileToSection(section, { name: file.name, size, password: filePassword, extension, blob: file });
+  const storagePath = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '-')}`;
+  const { error: uploadError } = await supabaseClient.storage.from('xplane-files').upload(storagePath, file, { upsert: false });
+  if (uploadError) {
+    showToast(`Upload failed: ${uploadError.message}`);
+    return;
+  }
+  appendFileToSection(section, { name: file.name, size, password: filePassword, extension, blob: file, storagePath });
   persistFiles();
   document.querySelector('#uploadForm').reset();
   renderSectionEditor();
@@ -543,3 +588,32 @@ function showToast(message) {
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 3200);
 }
+
+async function loadCloudData() {
+  const [sectionResult, fileResult, userResult, requestResult] = await Promise.all([
+    supabaseClient.from('sections').select('id, name').order('created_at'),
+    supabaseClient.from('files').select('name, size, password, extension, storage_path, section_id').order('created_at'),
+    supabaseClient.from('approved_users').select('username, name, password').order('created_at'),
+    supabaseClient.from('pending_requests').select('username, name').order('created_at')
+  ]);
+  const firstError = sectionResult.error || fileResult.error || userResult.error || requestResult.error;
+  if (firstError) {
+    console.warn('Supabase is not ready yet. Using local data:', firstError.message);
+    return;
+  }
+  if (!sectionResult.data.length && !fileResult.data.length && !userResult.data.length && !requestResult.data.length) return;
+
+  sections.forEach((section) => { section.element.remove(); section.navLink.remove(); });
+  sections.length = 0;
+  approvedUsers.splice(0, approvedUsers.length, ...userResult.data);
+  pendingRequests.splice(0, pendingRequests.length, ...requestResult.data);
+  sectionResult.data.forEach((section) => createSection(section.name));
+  fileResult.data.forEach((file) => {
+    const section = sections.find((item) => item.name === sectionResult.data.find((saved) => saved.id === file.section_id)?.name);
+    if (section) appendFileToSection(section, { name: file.name, size: file.size, password: file.password, extension: file.extension, storagePath: file.storage_path });
+  });
+  emptyFiles.hidden = sections.length > 0;
+  window.dispatchEvent(new CustomEvent('xplane-data-updated'));
+}
+
+loadCloudData();
