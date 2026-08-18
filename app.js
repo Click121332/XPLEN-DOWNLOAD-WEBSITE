@@ -55,11 +55,10 @@ emptyFiles.textContent = 'No files yet. An admin can add a section and upload fi
 document.querySelector('#files').after(emptyFiles);
 document.querySelector('.hero-stamp p').innerHTML = '0 files<br /><strong>0 sections</strong>';
 
-function persistSections() {
+async function persistSections() {
   localStorage.setItem('xplaneSections', JSON.stringify(sections.map((section) => section.name)));
-  supabaseClient.from('sections').upsert(sections.map((section) => ({ name: section.name })), { onConflict: 'name' }).then(({ error }) => {
-    if (error) console.error('Could not save sections to Supabase:', error.message);
-  });
+  const { error } = await supabaseClient.from('sections').upsert(sections.map((section) => ({ name: section.name })), { onConflict: 'name' });
+  if (error) throw new Error(`Could not save sections to Supabase: ${error.message}`);
   window.dispatchEvent(new CustomEvent('xplane-data-updated'));
 }
 
@@ -92,18 +91,20 @@ savedFiles.forEach((file) => {
   if (section) appendFileToSection(section, file);
 });
 
-function persistFiles() {
+async function persistFiles() {
   const files = [];
   sections.forEach((section) => section.element.querySelectorAll('.file-row').forEach((row) => {
     files.push({ name: row.dataset.name, size: row.dataset.size, password: row.dataset.password, sectionName: section.name, extension: row.dataset.extension, storagePath: row.dataset.storagePath });
   }));
   localStorage.setItem('xplaneFiles', JSON.stringify(files));
-  Promise.all(files.filter((file) => file.storagePath).map(async (file) => {
-    const { data: section } = await supabaseClient.from('sections').select('id').eq('name', file.sectionName).maybeSingle();
-    if (!section) return;
-    const { error } = await supabaseClient.from('files').upsert({ name: file.name, size: file.size, password: file.password, extension: file.extension, section_id: section.id, storage_path: file.storagePath }, { onConflict: 'storage_path' });
-    if (error) console.error('Could not save file to Supabase:', error.message);
+  const saveResults = await Promise.all(files.filter((file) => file.storagePath).map(async (file) => {
+    const { data: section, error: sectionError } = await supabaseClient.from('sections').select('id').eq('name', file.sectionName).maybeSingle();
+    if (sectionError) throw sectionError;
+    if (!section) throw new Error(`Section "${file.sectionName}" was not found in Supabase`);
+    return supabaseClient.from('files').upsert({ name: file.name, size: file.size, password: file.password, extension: file.extension, section_id: section.id, storage_path: file.storagePath }, { onConflict: 'storage_path' });
   }));
+  const fileError = saveResults.find((result) => result.error)?.error;
+  if (fileError) throw new Error(`Could not save file to Supabase: ${fileError.message}`);
   window.dispatchEvent(new CustomEvent('xplane-data-updated'));
 }
 
@@ -115,6 +116,7 @@ function appendFileToSection(section, file) {
   row.dataset.password = file.password || '';
   row.dataset.extension = file.extension || 'FILE';
   row.dataset.storagePath = file.storagePath || '';
+  row.dataset.localPath = file.localPath || '';
   row.fileBlob = file.blob || null;
   row.innerHTML = `<div class="file-type doc">${row.dataset.extension}</div><div class="file-info"><h3></h3><p>${section.name} <span>•</span> Added by admin</p></div><div class="file-size">${file.size}</div><span class="lock">⌑</span><button class="download-button" data-file="${file.name}" data-size="${file.size}" aria-label="Download ${file.name}">↓</button>`;
   row.querySelector('h3').textContent = file.name;
@@ -134,6 +136,16 @@ function startDownload(row) {
 }
 
 function downloadFile(row) {
+  if (row.dataset.localPath) {
+    const link = document.createElement('a');
+    link.href = row.dataset.localPath;
+    link.download = row.dataset.name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    showToast(`${row.dataset.name} download started`);
+    return;
+  }
   const downloadBlob = row.fileBlob || (row.dataset.storagePath ? null : new Blob([`Xplane Files\n${row.dataset.name}\nSection: ${row.closest('.collection-section')?.querySelector('h2')?.textContent || 'Files'}`], { type: 'text/plain' }));
   if (!downloadBlob && row.dataset.storagePath) {
     const { data } = supabaseClient.storage.from('xplane-files').getPublicUrl(row.dataset.storagePath);
@@ -173,8 +185,8 @@ function removeSection(index) {
   });
   section.element.remove();
   section.navLink.remove();
-  persistSections();
-  persistFiles();
+  persistSections().catch((error) => showToast(error.message));
+  persistFiles().catch((error) => showToast(error.message));
   emptyFiles.hidden = sections.length > 0;
   renderSectionEditor();
   refreshSectionChoices();
@@ -225,7 +237,7 @@ function renderAdminFiles() {
       if (row.dataset.storagePath) supabaseClient.storage.from('xplane-files').remove([row.dataset.storagePath]);
       row.remove();
       section.element.querySelector('.file-total').textContent = `${section.element.querySelectorAll('.file-row').length} files`;
-      persistFiles();
+      persistFiles().catch((error) => showToast(error.message));
       renderSectionEditor();
       showToast(`${row.dataset.name} removed`);
     });
@@ -254,13 +266,18 @@ function setupSectionEditor() {
   filePassword.placeholder = 'Enter Anything';
   filePassword.required = true;
   uploadForm.querySelector('.upload-drop').before(filePassword);
-  editor.addEventListener('submit', (event) => {
+  editor.addEventListener('submit', async (event) => {
     event.preventDefault();
     const input = document.querySelector('#sectionName');
     const name = input.value.trim();
     if (!name || sections.some((section) => section.name.toLowerCase() === name.toLowerCase())) return;
     createSection(name);
-    persistSections();
+    try {
+      await persistSections();
+    } catch (error) {
+      showToast(error.message);
+      return;
+    }
     renderSectionEditor();
     input.value = '';
     showToast(`${name} added`);
@@ -587,7 +604,13 @@ document.querySelector('#uploadForm').addEventListener('submit', async (event) =
     return;
   }
   appendFileToSection(section, { name: file.name, size, password: filePassword, extension, blob: file, storagePath });
-  persistFiles();
+  try {
+    await persistFiles();
+  } catch (error) {
+    await supabaseClient.storage.from('xplane-files').remove([storagePath]);
+    showToast(error.message);
+    return;
+  }
   document.querySelector('#uploadForm').reset();
   renderSectionEditor();
   showToast(`${file.name} added to ${section.name}`);
